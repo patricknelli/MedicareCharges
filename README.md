@@ -1,1 +1,7 @@
 # MedicareCharges
+The Medicare_Provider_Charge_Inpatient_DRG100_FY2013 file provides the discharge volume, Average Covered Charges (this field is basically useless), Average Total Payments (this is interesting because it is what all payors pay for the DRG procedure) and Average Medicare Payments (the average price medicare pays for that DRG).  DRG is basically the procedure that patient received.  I added a PDF called Inpatient_Methodology which is the description of the Medicare_Provider_Charge_Inpatient_DRG100_FY2013 file
+The Hospital_Data is the 2013 general hospital information.  The interesting fields are Hospital Type and Hospital Ownership, as these will help filter data in the other file
+
+The two files should be joined on the Provider Id / Provider Number fields (this is Medicare's unique number for each hospital)
+
+As far as what we can learn from this, I think it would be interesting to join the data sets, and see if there are any interesting correlations between the dependent variables (Total Discharges, Average Total Payments, and Average Medicare Payments) and the independent variables (Provider ID / Number,  Hospital Ownership, Hospital Type, State, DRG Definition).  I'd be interested in the most variable cost DRGs for the top volume hospitals, does higher volume correlate with lower payments, what are the most expensive DRGs, what DRGs or Hospitals have big differences between Average Total Payments and Average Medicare Payments.  I'm sure there are other questions, these are just a few that come to mind.
