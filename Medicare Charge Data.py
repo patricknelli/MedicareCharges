@@ -220,7 +220,7 @@ g = sns.FacetGrid(fullDF871, hue="OwnershipGroup", palette=pal, size=5)
 g.map(plt.scatter, "Total Discharges", "Average Total Payments", s=50, alpha=.2, linewidth=.5, edgecolor="white")
 g.add_legend();
 
-
+plt.figure();
 plt.hist([fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'Government'],
           fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'Proprietary'],
           fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'NonProfit']
