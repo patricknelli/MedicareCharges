@@ -8,6 +8,9 @@ import numpy as np
 from pandas import Series, DataFrame
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
+np.random.seed(sum(map(ord, "palettes")))
 
 #importing cms 2013 charges dataset
 charges = pd.read_csv('data//Medicare_Provider_Charge_Inpatient_DRG100_FY2013.csv')
@@ -90,6 +93,27 @@ fullDF.head()
 fullDF.dtypes
 fullDF.describe()
 
+fullDF['Hospital Ownership'].fillna('NA', inplace=True)
+
+#function to create a grouping of hospital ownerships
+def convertOwnership(df):
+    b = df['Provider Id']
+    if df['Hospital Ownership'][:3] == 'Gov':
+        a = 'Government'
+    elif df['Hospital Ownership'][:3] == 'Vol':
+        a = 'NonProfit'
+    elif df['Hospital Ownership'] == 'NA':
+        a = 'Unknown'
+    else:
+        a = 'Proprietary'
+    return pd.Series(dict(OwnershipGroup=a, ProviderId=b)) 
+
+ownershipGroup = fullDF.apply(convertOwnership, axis=1)
+
+fullDF = pd.concat([fullDF, ownershipGroup], axis=1)
+del fullDF['ProviderId']
+fullDF.head()
+
 #pivot out DRGs so we can compare drgs to each other
 pivotedDRG = fullDF.pivot_table(index=['Provider Id'],
                            columns=['drg','DRG Definition', 'mdc'],
@@ -130,18 +154,18 @@ drgScatterDF['totalCases'] = totalCases
 drgScatterDF.reset_index(inplace=True)
 drgScatterDF.head()
 
-# making the scatter plot
+# making the scatter plot / bubble chart
 plt.figure(figsize=(10, 10))
 plt.scatter(drgScatterDF.totalSpend, drgScatterDF.coefficientOfVariation
             , c=drgScatterDF.mdc, s= drgScatterDF['totalCases'] / 200
-            , alpha = .5, label = drgScatterDF.mdc)
-plt.figtext(drgScatterDF.totalSpend, drgScatterDF.coefficientOfVariation
-            ,drgScatterDF.drg)
+            , alpha = .5)
+for k, v in drgScatterDF[['totalSpend', 'coefficientOfVariation']].iterrows():
+    plt.annotate(drgScatterDF['drg'].ix[k], v,
+                xytext=(-10,-4), textcoords='offset points',
+                family='sans-serif', fontsize=12, color='darkslategrey')
 plt.title('KPA for DRG')
 plt.xlabel('Total Payments per DRG')
 plt.ylabel('Coefficient of Variation')
-plt.annotate(drgScatterDF.drg.astype(str)
-            , xy = (drgScatterDF.totalSpend, drgScatterDF.coefficientOfVariation))
 plt.show();
 
 
@@ -165,3 +189,86 @@ plt.ylabel('MDC')
 plt.xlabel('Coefficient of Variation')
 plt.show();
 
+
+#Exploring DRG 871 since it is a high payment and variable drg
+fullDF871 = fullDF[fullDF['drg'] == 871]
+fullDF871.head()
+fullDF871.describe()
+fullDF871.reset_index(inplace=True)
+
+plt.scatter(fullDF871['Total Discharges'], fullDF871['Average Total Payments'], s = 1, alpha = 0.5)
+plt.title('Total Discharges versus Average Total Payments')
+plt.ylabel('Average Total Payments')
+plt.xlabel('Total Discharges')
+plt.show();
+
+sns.lmplot('Total Discharges'
+            , 'Average Total Payments'
+            , data=fullDF871
+            , hue='OwnershipGroup'
+            , fit_reg=False)
+plt.show();
+
+#same chart as above
+pal = dict(Government="seagreen", Unknown="gray", NonProfit="blue", Proprietary="red")
+g = sns.FacetGrid(fullDF871, hue="OwnershipGroup", palette=pal, size=5)
+g.map(plt.scatter, "Total Discharges", "Average Total Payments", s=50, alpha=.2, linewidth=.5, edgecolor="white")
+g.add_legend();
+
+pal = dict(Government="seagreen", Unknown="gray", NonProfit="blue", Proprietary="red")
+g = sns.FacetGrid(fullDF871, hue="OwnershipGroup", palette=pal, size=5)
+g.map(plt.scatter, "Total Discharges", "Average Total Payments", s=50, alpha=.2, linewidth=.5, edgecolor="white")
+g.add_legend();
+
+
+plt.hist([fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'Government'],
+          fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'Proprietary'],
+          fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'NonProfit']
+          ], label=['Government', 'Proprietary', 'NonProfit']
+          , stacked=False,normed = True)
+plt.legend()
+plt.title('Average Total Payments by Hospital Ownership')
+plt.ylabel('% of Total Hospitals in Bin')
+plt.xlabel('Average Total Payments')
+plt.show();
+
+g = sns.FacetGrid(fullDF871, col="OwnershipGroup")
+g.map(plt.hist, "Average Total Payments");
+
+g = sns.PairGrid(fullDF871, vars=["Average Total Payments", "Total Discharges"], hue="OwnershipGroup")
+g.map(plt.scatter);
+
+
+#attempt to graph all parameters using seaborn
+cols = ['Total Discharges',
+ 'Average Covered Charges',
+ 'Average Total Payments',
+ 'Average Medicare Payments',
+ 'OwnershipGroup']
+ 
+subDF871 = fullDF871[cols]
+subDF871['Total Discharges'] = subDF871['Total Discharges'].astype(float)
+subDF871.head()
+subDF871.describe()
+
+g = sns.PairGrid(subDF871, hue="OwnershipGroup")
+g.map(plt.scatter);
+
+#any time I try to map a histogram on the diagnol, it doesn't seem to work
+
+'''
+g = sns.PairGrid(subDF871.dropna())
+g.map_diag(sns.kdeplot, lw=3)
+g.map_diag(plt.hist)
+g.map_offdiag(plt.scatter);
+
+g = sns.pairplot(subDF871.dropna(), hue = 'OwnershipGroup', diag_kind="kde", size=2.5);
+
+g = sns.PairGrid(subDF871, hue="OwnershipGroup")
+g.map_diag(plt.hist)
+g.map_offdiag(plt.scatter)
+g.add_legend();
+
+g = sns.pairplot(subDF871, hue="OwnershipGroup", diag_kind="kde", size=2.5);
+
+'''
