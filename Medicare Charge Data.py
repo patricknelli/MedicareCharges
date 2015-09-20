@@ -9,8 +9,17 @@ from pandas import Series, DataFrame
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
+from scipy.stats import linregress
+
+#not sure what the below items do, but they are listed 
+#on the Seaborn site as intro lines of code
 sns.set()
 np.random.seed(sum(map(ord, "palettes")))
+
+
+
+######  IMPORT AND CREATING DENORMALIZED PULL DATASET SECTION######
 
 #importing cms 2013 charges dataset
 charges = pd.read_csv('data//Medicare_Provider_Charge_Inpatient_DRG100_FY2013.csv')
@@ -39,7 +48,8 @@ charges['Provider Id'] = charges['Provider Id'].astype(str)
 charges.dtypes
 
 #joining charges and hospital datasets to have additional information (e.g. hospital type) on each hospital
-hospitalCharges = pd.merge(charges, hospital, left_on='Provider Id', right_on= 'Provider Number', how='left')
+hospitalCharges = pd.merge(charges, hospital, left_on='Provider Id'
+    , right_on= 'Provider Number', how='left')
 hospitalCharges.head()
 hospitalCharges.describe()
 
@@ -50,7 +60,8 @@ hospitalsNotJoining = hospitalCharges['Provider Name'][hospitalCharges['Provider
 hospitalsNotJoiningDischarges = hospitalCharges['Total Discharges'][hospitalCharges['Provider Number'].isnull()].sum()
 
 #% of overall total discharges
-percentOfNotJoining = (float(hospitalsNotJoiningDischarges) / hospitalCharges['Total Discharges'].sum())*100 
+percentOfNotJoining = (float(hospitalsNotJoiningDischarges) / \
+    hospitalCharges['Total Discharges'].sum())*100 
 print """The hospitals that don't join between the datasets account for %.2f percent 
     of the overall discharges""" % percentOfNotJoining
     
@@ -62,7 +73,8 @@ fullDF.describe()
 #all drgs joined (function below equals 0)
 fullDF['mdc'].isnull().sum()
 
-#rearranging columns to group them in three general categories: hospital information, drg information, and charges information
+#rearranging columns to group them in three general categories: ...
+#...hospital information, drg information, and charges information
 cols = fullDF.columns.tolist()
 cols = ['Provider Id',
  'Provider Name',
@@ -114,6 +126,10 @@ fullDF = pd.concat([fullDF, ownershipGroup], axis=1)
 del fullDF['ProviderId']
 fullDF.head()
 
+
+
+######  EXPLORING DRGS SECTION  ######
+
 #pivot out DRGs so we can compare drgs to each other
 pivotedDRG = fullDF.pivot_table(index=['Provider Id'],
                            columns=['drg','DRG Definition', 'mdc'],
@@ -135,12 +151,11 @@ plt.ylabel('DRG')
 plt.xlabel('Coefficient of Variation')
 plt.show();
 
-
-
-#process to create a bubble chart 
+#process to create a bubble chart to show highly variable and high payment DRGs
 drgDF = fullDF.groupby(['drg','mdc'])
 totalSpend = drgDF['Total Payments'].sum()
-coefficientOfVariation = drgDF['Average Total Payments'].std() / drgDF['Average Total Payments'].mean()
+coefficientOfVariation = drgDF['Average Total Payments'].std() / \
+    drgDF['Average Total Payments'].mean()
 totalCases = drgDF['Total Discharges'].sum()
 mdc = pd.DataFrame(index = fullDF['mdc'].unique())
 
@@ -169,20 +184,23 @@ plt.ylabel('Coefficient of Variation')
 plt.show();
 
 
+######  EXPLORING MDCS SECTION  ######
 
 #group DRGs by mdc
 mdcDF = fullDF.groupby('mdcdesc')
 mdcDF.describe()
 
 #highest payment MDCs
-mdcDF['Average Total Payments'].mean().order(ascending = True).plot(kind='barh', figsize=[3, 10])
+mdcDF['Average Total Payments'].mean().order(ascending = True).plot(kind='barh'
+    , figsize=[3, 10])
 plt.title('Average Total Payments by MDC')
 plt.ylabel('MDC')
 plt.xlabel('Average Total Payment')
 plt.show();
 
 #highest variable MDCs (coeficient of variation)
-coefficientOfVariation = mdcDF['Average Total Payments'].std() / mdcDF['Average Total Payments'].mean()
+coefficientOfVariation = mdcDF['Average Total Payments'].std() / \
+    mdcDF['Average Total Payments'].mean()
 coefficientOfVariation.order(ascending = True).plot(kind='barh', figsize=[3, 10])
 plt.title('Coefficient of Variation of Total Payments by MDC')
 plt.ylabel('MDC')
@@ -190,36 +208,42 @@ plt.xlabel('Coefficient of Variation')
 plt.show();
 
 
+######  EXPLORING DRG 871 SECTION SINCE IT IS ...
+######  ...A HIGH PAYMENT DRG AS SEEN IN BUBBLE CHART  ######
+
 #Exploring DRG 871 since it is a high payment and variable drg
 fullDF871 = fullDF[fullDF['drg'] == 871]
 fullDF871.head()
 fullDF871.describe()
 fullDF871.reset_index(inplace=True)
 
-plt.scatter(fullDF871['Total Discharges'], fullDF871['Average Total Payments'], s = 1, alpha = 0.5)
+plt.scatter(fullDF871['Total Discharges'], fullDF871['Average Total Payments']
+    , s = 1, alpha = 0.5)
 plt.title('Total Discharges versus Average Total Payments')
 plt.ylabel('Average Total Payments')
 plt.xlabel('Total Discharges')
 plt.show();
 
+#how does onwership relate to payments based on discharges
 sns.lmplot('Total Discharges'
             , 'Average Total Payments'
             , data=fullDF871
             , hue='OwnershipGroup'
-            , fit_reg=False)
-plt.show();
+            , fit_reg=False);
 
 #same chart as above
 pal = dict(Government="seagreen", Unknown="gray", NonProfit="blue", Proprietary="red")
 g = sns.FacetGrid(fullDF871, hue="OwnershipGroup", palette=pal, size=5)
-g.map(plt.scatter, "Total Discharges", "Average Total Payments", s=50, alpha=.2, linewidth=.5, edgecolor="white")
+g.map(plt.scatter, "Total Discharges", "Average Total Payments", s=50
+    , alpha=.2, linewidth=.5, edgecolor="white")
 g.add_legend();
 
-pal = dict(Government="seagreen", Unknown="gray", NonProfit="blue", Proprietary="red")
-g = sns.FacetGrid(fullDF871, hue="OwnershipGroup", palette=pal, size=5)
-g.map(plt.scatter, "Total Discharges", "Average Total Payments", s=50, alpha=.2, linewidth=.5, edgecolor="white")
-g.add_legend();
+#testing out pair plots
+g = sns.PairGrid(fullDF871, vars=["Average Total Payments", "Total Discharges"]
+    , hue="OwnershipGroup")
+g.map(plt.scatter);
 
+#do hospitals differ on average total payments based on ownership?
 plt.figure();
 plt.hist([fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'Government'],
           fullDF871['Average Total Payments'][fullDF871['OwnershipGroup'] == 'Proprietary'],
@@ -232,14 +256,11 @@ plt.ylabel('% of Total Hospitals in Bin')
 plt.xlabel('Average Total Payments')
 plt.show();
 
+#similar chart to above
 g = sns.FacetGrid(fullDF871, col="OwnershipGroup")
 g.map(plt.hist, "Average Total Payments");
 
-g = sns.PairGrid(fullDF871, vars=["Average Total Payments", "Total Discharges"], hue="OwnershipGroup")
-g.map(plt.scatter);
-
-
-#attempt to graph all parameters using seaborn
+#attempt to graph all relevant parameters using seaborn
 cols = ['Total Discharges',
  'Average Covered Charges',
  'Average Total Payments',
@@ -247,7 +268,6 @@ cols = ['Total Discharges',
  'OwnershipGroup']
  
 subDF871 = fullDF871[cols]
-subDF871['Total Discharges'] = subDF871['Total Discharges'].astype(float)
 subDF871.head()
 subDF871.describe()
 
@@ -256,19 +276,93 @@ g.map(plt.scatter);
 
 #any time I try to map a histogram on the diagnol, it doesn't seem to work
 
-'''
-g = sns.PairGrid(subDF871.dropna())
-g.map_diag(sns.kdeplot, lw=3)
-g.map_diag(plt.hist)
-g.map_offdiag(plt.scatter);
+#g = sns.PairGrid(subDF871.dropna())
+#g.map_diag(sns.kdeplot, lw=3)
+#g.map_diag(plt.hist)
+#g.map_offdiag(plt.scatter);
+#
+#g = sns.pairplot(subDF871.dropna(), hue = 'OwnershipGroup', diag_kind="kde", size=2.5);
+#
+#g = sns.PairGrid(subDF871, hue="OwnershipGroup")
+#g.map_diag(plt.hist)
+#g.map_offdiag(plt.scatter)
+#g.add_legend();
+#
+#g = sns.pairplot(subDF871, hue="OwnershipGroup", diag_kind="kde", size=2.5);
 
-g = sns.pairplot(subDF871.dropna(), hue = 'OwnershipGroup', diag_kind="kde", size=2.5);
 
-g = sns.PairGrid(subDF871, hue="OwnershipGroup")
-g.map_diag(plt.hist)
-g.map_offdiag(plt.scatter)
-g.add_legend();
 
-g = sns.pairplot(subDF871, hue="OwnershipGroup", diag_kind="kde", size=2.5);
+######  HOSPITAL MARKET SHARE SECTION BY HRR  ######
 
-'''
+#determine marketshare per HRR
+hospitalDF = fullDF.groupby(['Provider Id','Hospital Referral Region (HRR) Description'
+    , 'OwnershipGroup'])
+HRRDF = fullDF.groupby('Hospital Referral Region (HRR) Description')
+totalDisHRR = pd.DataFrame(HRRDF['Total Discharges'].sum(), columns = ['Total Discharges'])
+totalDisHRR.rename(columns={'Total Discharges': 'Total Discharges per HRR'}, inplace=True)
+totalDisHRR.reset_index(inplace=True)
+totalDisHRR.head()
+
+hospitalDF2 = pd.DataFrame()
+
+hospitalDF2['Average Total Payments'] = hospitalDF['Average Total Payments'].mean()
+hospitalDF2['Total Discharges'] = hospitalDF['Total Discharges'].sum()
+hospitalDF2.head()
+hospitalDF2.reset_index(inplace=True)
+
+hospitalDF2 = pd.merge(hospitalDF2, totalDisHRR
+    , on='Hospital Referral Region (HRR) Description')
+
+hospitalDF2.head(20)
+hospitalDF2.describe()
+hospitalDF2['HRR Market Share'] = hospitalDF2['Total Discharges'] / \
+    hospitalDF2['Total Discharges per HRR']
+hospitalDF2.head(10)
+hospitalDF2.sort(['Total Discharges'], ascending = True).head(20)
+
+
+#plot discharges by hospitals to see if we should remove smaller discharge hospitals
+plt.hist(hospitalDF2['Total Discharges'][hospitalDF2['Total Discharges'] < 5000]
+    , bins = 100)
+plt.title('Total Discharges by Hospital')
+plt.ylabel('Number of Hospitals in Bin')
+plt.xlabel('Total Discharges Bin')
+plt.show();
+
+hospitalDF2['Total Discharges'][hospitalDF2['Total Discharges'] > 200].count() / \
+    hospitalDF2['Total Discharges'].count().astype(float)
+
+sns.lmplot('HRR Market Share'
+            , 'Average Total Payments'
+            , data=hospitalDF2[(hospitalDF2['Total Discharges'] > 500) & \
+                (hospitalDF2['OwnershipGroup'] == 'Proprietary')]
+            #, hue='OwnershipGroup'
+            , fit_reg=False);
+
+hospitalDFLT200 = hospitalDF2[hospitalDF2['Total Discharges'] > 500]
+
+#Overall linear regression between HRR Market Share and Average Total Payments
+print "ALL HOSPITALS linear regression between HRR Market Share and Average Total Payments"
+slope, intercept, r_value, p_value, stderr_slope = linregress( \
+    hospitalDFLT200['HRR Market Share'], hospitalDFLT200['Average Total Payments'])
+
+print "slope:", slope
+print "intercept:", intercept
+print "r-squared:", r_value**2
+print "p_value:", p_value
+print '\n'
+
+#low r-squared and low p value indicates that is a positive correlation but a lot of variability, not a lot of prediction power
+
+#Linear regression based on ownership
+for row in hospitalDFLT200['OwnershipGroup'].unique():
+    slope, intercept, r_value, p_value, stderr_slope = linregress( \
+        hospitalDFLT200['HRR Market Share'][hospitalDFLT200['OwnershipGroup'] == row]
+        , hospitalDFLT200['Average Total Payments'][hospitalDFLT200['OwnershipGroup'] == row])
+    print row.upper() ,  """Owned Hospitals -- Linear regression between 
+        HRR Market Share and Average Total Payments"""
+    print "slope:", slope
+    print "intercept:", intercept
+    print "r-squared:", r_value**2
+    print "p_value:", p_value
+    print '\n'
