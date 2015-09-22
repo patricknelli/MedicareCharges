@@ -14,7 +14,7 @@ from scipy.stats import linregress
 
 #not sure what the below items do, but they are listed 
 #on the Seaborn site as intro lines of code
-sns.set()
+sns.set(color_codes=True)
 np.random.seed(sum(map(ord, "palettes")))
 
 
@@ -106,6 +106,7 @@ fullDF.dtypes
 fullDF.describe()
 
 fullDF['Hospital Ownership'].fillna('NA', inplace=True)
+fullDF['Hospital Ownership'].unique()
 
 #function to create a grouping of hospital ownerships
 def convertOwnership(df):
@@ -120,9 +121,12 @@ def convertOwnership(df):
         a = 'Proprietary'
     return pd.Series(dict(OwnershipGroup=a, ProviderId=b)) 
 
-ownershipGroup = fullDF.apply(convertOwnership, axis=1)
 
-fullDF = pd.concat([fullDF, ownershipGroup], axis=1)
+fullDF['OwnershipGroup'] = fullDF.apply(convertOwnership, axis=1)
+
+#ownershipGroup = fullDF.apply(convertOwnership, axis=1)
+#fullDF = pd.concat([fullDF, ownershipGroup], axis=1)
+
 del fullDF['ProviderId']
 fullDF.head()
 
@@ -151,6 +155,7 @@ plt.ylabel('DRG')
 plt.xlabel('Coefficient of Variation')
 plt.show();
 
+
 #process to create a bubble chart to show highly variable and high payment DRGs
 drgDF = fullDF.groupby(['drg','mdc'])
 totalSpend = drgDF['Total Payments'].sum()
@@ -168,6 +173,7 @@ drgScatterDF['coefficientOfVariation'] = coefficientOfVariation
 drgScatterDF['totalCases'] = totalCases
 drgScatterDF.reset_index(inplace=True)
 drgScatterDF.head()
+
 
 # making the scatter plot / bubble chart
 plt.figure(figsize=(10, 10))
@@ -271,8 +277,8 @@ subDF871 = fullDF871[cols]
 subDF871.head()
 subDF871.describe()
 
-g = sns.PairGrid(subDF871, hue="OwnershipGroup")
-g.map(plt.scatter);
+#g = sns.PairGrid(subDF871, hue="OwnershipGroup")
+#g.map(plt.scatter);
 
 #any time I try to map a histogram on the diagnol, it doesn't seem to work
 
@@ -288,7 +294,7 @@ g.map(plt.scatter);
 #g.map_offdiag(plt.scatter)
 #g.add_legend();
 #
-#g = sns.pairplot(subDF871, hue="OwnershipGroup", diag_kind="kde", size=2.5);
+g = sns.pairplot(subDF871, hue="OwnershipGroup", size=2.5);
 
 
 
@@ -320,6 +326,12 @@ hospitalDF2['HRR Market Share'] = hospitalDF2['Total Discharges'] / \
 hospitalDF2.head(10)
 hospitalDF2.sort(['Total Discharges'], ascending = True).head(20)
 
+hospitalDF2['Total Discharges'].plot(kind='density')
+
+hospitalDF2.boxplot(column='Total Discharges', by='OwnershipGroup')
+
+
+#hospitalDF2['HRR Market Share'].plot(kind='density', xlim=(0,1))
 
 #plot discharges by hospitals to see if we should remove smaller discharge hospitals
 plt.hist(hospitalDF2['Total Discharges'][hospitalDF2['Total Discharges'] < 5000]
@@ -340,6 +352,9 @@ sns.lmplot('HRR Market Share'
             , fit_reg=False);
 
 hospitalDFLT200 = hospitalDF2[hospitalDF2['Total Discharges'] > 500]
+
+hospitalDFLT200.boxplot(column='Average Total Payments', by='OwnershipGroup')
+
 
 #Overall linear regression between HRR Market Share and Average Total Payments
 print "ALL HOSPITALS linear regression between HRR Market Share and Average Total Payments"
